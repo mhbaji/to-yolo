@@ -1,37 +1,7 @@
-import os 
-import json 
+import os
+import shutil 
 
-def writeJson(data:dict, path:str):
-    json_object = json.dumps(data, indent=4)
-    with open(path, "w") as outfile:
-        outfile.write(json_object)
-
-def readJson(path:str):
-    json_object = {}
-    with open(path, 'r') as openfile:
-        json_object = json.load(openfile)
-    return json_object
-
-def writeTxt(data:str, path:str):
-    with open(path, "w") as writer: 
-        writer.writelines(data) 
-
-def readTxt(path:str):
-    lines = []
-    with open(path, 'r') as file:
-        lines = file.readlines()
-    return lines
-
-def dirCheck(path:str, listCheck:list):
-    res = False
-    if os.path.isdir(path):
-        dirs = os.listdir(path)
-        dirs.sort()
-        for il in listCheck:
-            if not il in dirs:
-                return res
-        res = True
-    return res 
+from lib.tools import *
 
 def toTxt(path, labelsFilePath):
     imagesPath = os.path.join(path, 'images')
@@ -50,13 +20,12 @@ def toTxt(path, labelsFilePath):
             for iFile in imagesFiles:
                 fileName, _ = os.path.splitext(iFile)
                 jsonName = f"{fileName}.json"
+                txtPath = os.path.join(labelsPath, f"{fileName}.txt")
+                txtStr = ""
                 if jsonName in labelmeFiles:
                     # konversi
                     jsonPath = os.path.join(labelmePath, jsonName)
-                    txtPath = os.path.join(labelsPath, f"{fileName}.txt")
-
                     jsonObject = readJson(jsonPath)
-                    txtStr = ""
                     for shape in jsonObject['shapes']:
                         if shape['shape_type'] == 'rectangle':
                             xMin, yMin = shape['points'][0]
@@ -73,18 +42,28 @@ def toTxt(path, labelsFilePath):
                             _data_format = f"{labelIdx} {xMidNorm} {yMidNorm} {widthNorm} {heightNorm}\n"
                             txtStr += _data_format
                     
-                    writeTxt(txtStr, txtPath)
+                writeTxt(txtStr, txtPath)
 
-def labelmeToYolo(path:str, labelsFilePath:str):
+def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
     ilList = ['images', 'labelme']
     tvList = ['train', 'val']
     if os.path.exists(path) and os.path.exists(labelsFilePath):
         if os.path.isdir(path) and os.path.isfile(labelsFilePath):
-            if dirCheck(path, ilList):
-                # il dir
-                toTxt(path, labelsFilePath)
+            # split dataset
+            if dirCheck(path, ilList) and not dirCheck(path, tvList):
+                splitter(path, ratio, isRemove)
 
-            elif dirCheck(path, tvList):
+            else:
+                dirs = os.listdir(path)
+                dirs.sort()
+
+                for dir in dirs:
+                    dsPath = os.path.join(path, dir)
+                    if dirCheck(dsPath, ilList) and not dirCheck(dsPath, tvList):
+                        splitter(dsPath, ratio, isRemove)
+
+            # convert
+            if dirCheck(path, tvList):
                 # tv dir
                 dirs = os.listdir(path)
                 dirs.sort()
@@ -109,3 +88,91 @@ def labelmeToYolo(path:str, labelsFilePath:str):
                             tvPath = os.path.join(dsPath, dsDir)
                             if dirCheck(tvPath, ilList):
                                 toTxt(tvPath, labelsFilePath)
+                    
+def splitter(path:str, ratio:str, isRemove:bool):
+    rSplit = ratio.split(",")
+    fSplit = [float(x) for x in rSplit]
+    if not sum(fSplit)==10: 
+        print("Rasio Salah, Jika Dijumlah Harus Tepat 10")
+        return 
+
+    imagesPath = os.path.join(path, 'images')
+    labelmePath = os.path.join(path, 'labelme')
+    if (not os.path.exists(imagesPath) or not os.path.exists(labelmePath) or 
+        not os.path.isdir(imagesPath) or not os.path.isdir(labelmePath)):
+        return
+    
+    # get data list 
+    imagesFiles = os.listdir(imagesPath)
+    imagesFiles.sort()
+    labelmeFiles = os.listdir(labelmePath)
+
+    if len(imagesFiles) < 3:
+        print("Data Terlalu Sedikit")
+        return
+
+    # data check 
+    for iFile in imagesFiles:
+        fileName, _ = os.path.splitext(iFile)
+        jsonName = f"{fileName}.json"
+        if not jsonName in labelmeFiles and isRemove:
+            iFilePath = os.path.join(imagesPath, iFile)
+            print(f"Hapus: {iFilePath}")
+            os.remove(iFilePath)
+    
+    if isRemove:
+        imagesFiles = os.listdir(imagesPath)
+        imagesFiles.sort()
+
+    # split
+    print("Rasio Benar, Lanjut ke Konversi")
+    lenData = len(imagesFiles)
+    testCounts = math.ceil((fSplit[2]*lenData)/sum(fSplit))
+    valCounts = math.ceil((fSplit[1]*lenData)/sum(fSplit))
+    trainCounts = lenData - (testCounts+valCounts)
+
+    sizes = [trainCounts, valCounts, testCounts]
+    shuffled = random.sample(imagesFiles, len(imagesFiles))
+    splitResult = []
+    idx = 0
+    for size in sizes:
+        splitResult.append(shuffled[idx:idx+size])
+        idx += size
+
+    print('splitResult: ', splitResult)
+
+    # create dir
+    tvtList = ['train', 'val', 'test']
+    ilList = ['images', 'labelme']
+    dictPath = {}
+    for tvt in tvtList:
+        dictPath[tvt] = { "main": os.path.join(path, tvt) }
+        if not os.path.exists(dictPath[tvt]['main']): os.mkdir(dictPath[tvt]['main'])
+
+        for il in ilList:
+            dictPath[tvt][il] = os.path.join(dictPath[tvt]['main'], il)
+            if not os.path.exists(dictPath[tvt][il]): os.mkdir(dictPath[tvt][il])
+
+    # copy file
+    for idx, lData in enumerate(splitResult):
+        for imName in lData:
+            if idx == 0: 
+                baseDestImageFile = dictPath['train']['images']
+                baseDestLabelmeFile = dictPath['train']['labelme']
+            elif idx == 1: 
+                baseDestImageFile = dictPath['val']['images']
+                baseDestLabelmeFile = dictPath['val']['labelme']
+            elif idx == 2: 
+                baseDestImageFile = dictPath['test']['images']
+                baseDestLabelmeFile = dictPath['test']['labelme']
+
+            sourceImageFile = os.path.join(imagesPath, imName)
+            destImageFile = os.path.join(baseDestImageFile, imName)
+            shutil.copy(sourceImageFile, destImageFile)
+            
+            imBaseName, _ = os.path.splitext(imName)
+            jsonName = f"{imBaseName}.json"
+            sourceLabelmeFile = os.path.join(labelmePath, jsonName)
+            if os.path.exists(sourceLabelmeFile):
+                destLabelmeFile = os.path.join(baseDestLabelmeFile, jsonName)
+                shutil.copy(sourceLabelmeFile, destLabelmeFile)
