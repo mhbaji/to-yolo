@@ -1,7 +1,5 @@
-import math
 import os 
 import json
-import random 
 
 def writeJson(data:dict, path:str):
     json_object = json.dumps(data, indent=4)

@@ -1,5 +1,7 @@
 import os
 import shutil 
+import math 
+import random 
 
 from lib.tools import *
 
@@ -50,19 +52,24 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
     if os.path.exists(path) and os.path.exists(labelsFilePath):
         if os.path.isdir(path) and os.path.isfile(labelsFilePath):
             # split dataset
+            print("Splitting")
             if dirCheck(path, ilList) and not dirCheck(path, tvList):
+                print(path)
                 splitter(path, ratio, isRemove)
 
-            else:
+            elif not dirCheck(path, tvList):
                 dirs = os.listdir(path)
                 dirs.sort()
 
                 for dir in dirs:
                     dsPath = os.path.join(path, dir)
                     if dirCheck(dsPath, ilList) and not dirCheck(dsPath, tvList):
+                        print(dsPath)
                         splitter(dsPath, ratio, isRemove)
+            print("Splitted")
 
             # convert
+            print("Converting")
             if dirCheck(path, tvList):
                 # tv dir
                 dirs = os.listdir(path)
@@ -71,6 +78,7 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
                 for dir in dirs:
                     tvPath = os.path.join(path, dir)
                     if dirCheck(tvPath, ilList):
+                        print(tvPath)
                         toTxt(tvPath, labelsFilePath)
 
             else:
@@ -87,7 +95,9 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
                         for dsDir in dsDirs:
                             tvPath = os.path.join(dsPath, dsDir)
                             if dirCheck(tvPath, ilList):
+                                print(tvPath)
                                 toTxt(tvPath, labelsFilePath)
+            print("Converted")
                     
 def splitter(path:str, ratio:str, isRemove:bool):
     rSplit = ratio.split(",")
