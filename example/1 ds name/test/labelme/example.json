@@ -1,0 +1,28 @@
+{
+  "version": "5.5.0",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "wajah",
+      "points": [
+        [
+          191.83098591549293,
+          4.507042253521111
+        ],
+        [
+          395.3521126760564,
+          446.056338028169
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "rectangle",
+      "flags": {},
+      "mask": null
+    }
+  ],
+  "imagePath": "..\\images\\example.jpg",
+  "imageData": null,
+  "imageHeight": 640,
+  "imageWidth": 640
+}
