@@ -49,7 +49,8 @@ def toTxt(path, labelsFilePath):
                     
                 writeTxt(txtStr, txtPath)
                 iFilePath = os.path.join(imagesPath, iFile)
-                imagesFilePaths.append(iFilePath)
+                absPath = os.path.abspath(iFilePath)
+                imagesFilePaths.append(absPath)
     return imagesFilePaths, labels
 
 def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool, dataName:str=""):
