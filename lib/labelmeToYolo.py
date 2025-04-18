@@ -1,3 +1,4 @@
+import datetime
 import os
 import shutil 
 import math 
@@ -6,12 +7,13 @@ import random
 from lib.tools import *
 
 def toTxt(path, labelsFilePath):
+    imagesFilePaths = []
+    labels = readTxt(labelsFilePath)
     imagesPath = os.path.join(path, 'images')
     labelsPath = os.path.join(path, 'labels')
     labelmePath = os.path.join(path, 'labelme')
     if os.path.exists(imagesPath) and os.path.exists(labelmePath):
         if os.path.isdir(imagesPath) and os.path.isdir(labelmePath):
-            labels = readTxt(labelsFilePath)
             if not os.path.exists(labelsPath):
                 os.mkdir(labelsPath)
 
@@ -45,8 +47,11 @@ def toTxt(path, labelsFilePath):
                             txtStr += _data_format
                     
                 writeTxt(txtStr, txtPath)
+                iFilePath = os.path.join(imagesPath, iFile)
+                imagesFilePaths.append(iFilePath)
+    return imagesFilePaths, labels
 
-def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
+def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool, dataName:str=""):
     ilList = ['images', 'labelme']
     tvList = ['train', 'val']
     if os.path.exists(path) and os.path.exists(labelsFilePath):
@@ -70,6 +75,8 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
 
             # convert
             print("Converting")
+            data = {}
+            labels = []
             if dirCheck(path, tvList):
                 # tv dir
                 dirs = os.listdir(path)
@@ -79,7 +86,7 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
                     tvPath = os.path.join(path, dir)
                     if dirCheck(tvPath, ilList):
                         print(tvPath)
-                        toTxt(tvPath, labelsFilePath)
+                        data[dir], labels = toTxt(tvPath, labelsFilePath)
 
             else:
                 # dataset dir
@@ -96,8 +103,12 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool):
                             tvPath = os.path.join(dsPath, dsDir)
                             if dirCheck(tvPath, ilList):
                                 print(tvPath)
-                                toTxt(tvPath, labelsFilePath)
+                                data[dsDir], labels = toTxt(tvPath, labelsFilePath)
             print("Converted")
+
+            print("Set Dir Generating")
+            setDirGenerator(data, labels, dataName)
+            print("Done")
                     
 def splitter(path:str, ratio:str, isRemove:bool):
     rSplit = ratio.split(",")
@@ -186,3 +197,32 @@ def splitter(path:str, ratio:str, isRemove:bool):
             if os.path.exists(sourceLabelmeFile):
                 destLabelmeFile = os.path.join(baseDestLabelmeFile, jsonName)
                 shutil.copy(sourceLabelmeFile, destLabelmeFile)
+
+def setDirGenerator(data:dict, labels:list, name:str=""):
+    baseDir = "data"
+    assert len(data) > 2, f"Data Tidak Sesuai, Hanya {data.keys()}"
+
+    yamlFormat = {
+        'train': "train.txt",
+        'val': "val.txt",
+        'test': "test.txt",
+        'nc': len(labels),
+        'names': labels 
+    }
+    _front_name = "data" if name == "" else name
+    _timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+    dirName = f"{_front_name} {_timestamp}"
+
+    if not os.path.exists(baseDir): os.mkdir(baseDir)
+    dirPath = os.path.join(baseDir, dirName)
+    if not os.path.exists(dirPath): os.mkdir(dirPath)
+        
+    for key, val in data.items():
+        imageString = "\n".join(val)
+        if os.name == 'nt':
+            imageString = imageString.replace("\\", "/")
+        filePath = os.path.join(dirPath, f"{key}.txt")
+        writeTxt(imageString, filePath)
+    yamlPath = os.path.join(dirPath, "data.yaml")
+
+    writeYaml(yamlFormat, yamlPath)

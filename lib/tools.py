@@ -1,5 +1,6 @@
 import os 
 import json
+import yaml 
 
 def writeJson(data:dict, path:str):
     json_object = json.dumps(data, indent=4)
@@ -32,3 +33,13 @@ def dirCheck(path:str, listCheck:list):
                 return res
         res = True
     return res 
+
+def writeYaml(data:dict, path:str):
+    with open(path, 'w') as file:
+        yaml.dump(data, file)
+
+def readYaml(path:str):
+    loaded_data = {}
+    with open(path, 'r') as file:
+        loaded_data = yaml.safe_load(file)
+    return loaded_data
