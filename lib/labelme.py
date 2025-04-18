@@ -2,7 +2,8 @@ import datetime
 import os
 import shutil 
 import math 
-import random 
+import random
+import cv2 
 
 from lib.tools import *
 
@@ -226,3 +227,108 @@ def setDirGenerator(data:dict, labels:list, name:str=""):
     yamlPath = os.path.join(dirPath, "data.yaml")
 
     writeYaml(yamlFormat, yamlPath)
+
+def toLabelme(path:str, labels:list):
+    imagesPath = os.path.join(path, 'images')
+    labelsPath = os.path.join(path, 'labels')
+    labelmePath = os.path.join(path, 'labelme')
+    if os.path.exists(imagesPath) and os.path.exists(labelsPath):
+        if os.path.isdir(imagesPath) and os.path.isdir(labelsPath):
+            if not os.path.exists(labelmePath):
+                os.mkdir(labelmePath)
+
+            imagesFiles = os.listdir(imagesPath)
+            imagesFiles.sort()
+
+            labelsFiles = os.listdir(labelsPath)
+            for iFile in imagesFiles:
+                fileName, _ = os.path.splitext(iFile)
+                txtName = f"{fileName}.txt"
+
+                if txtName in labelsFiles:
+                    imagePath = os.path.join(imagesPath, iFile)
+                    imageFile = cv2.imread(imagePath)
+                    hFrame, wFrame = imageFile.shape[:2]
+
+                    jsonFormat = {
+                        "version": "5.5.0",
+                        "flags": {},
+                        "shapes": [],
+                        "imagePath": f"../images/{iFile}",
+                        "imageData": None,
+                        "imageHeight": hFrame,
+                        "imageWidth": wFrame
+                    }
+
+                    txtPath = os.path.join(labelsPath, txtName)
+                    txtFile = readTxt(txtPath)
+                    for tFile in txtFile:
+                        tList = tFile.split(" ")
+                        if len(tList) == 5:
+                            xMid = float(tList[1])*wFrame
+                            yMid = float(tList[2])*hFrame
+                            width2 = (float(tList[3])*wFrame)/2
+                            height2 = (float(tList[4])*hFrame)/2
+                            xMin = xMid - width2
+                            yMin = yMid - height2
+                            xMax = xMid + width2
+                            yMax = yMid + height2
+
+                            shapesFormat = {
+                                "label": labels[int(tList[0])],
+                                "points": [
+                                    [ xMin, yMin ],
+                                    [ xMax, yMax ]
+                                ],
+                                "group_id": None,
+                                "description": "",
+                                "shape_type": "rectangle",
+                                "flags": {},
+                                "mask": None
+                            }
+                            jsonFormat['shapes'].append(shapesFormat)
+                    
+                    jsonPath = os.path.join(labelmePath, f"{fileName}.json")
+                    writeJson(jsonFormat, jsonPath)
+
+def yoloToLabelme(path:str):
+    yamlPath = os.path.join(path, 'data.yaml')
+    assert os.path.exists(yamlPath), "File Yaml Tidak Ditemukan"
+    
+    ilList = ['images', 'labels']
+    tvList = ['train', 'val']
+
+    yamlObject = readYaml(yamlPath)
+    print("Converting")
+    if dirCheck(path, ilList) and not dirCheck(path, tvList):
+        print(path)
+        toLabelme(path, yamlObject['names'])
+
+    elif dirCheck(path, tvList):
+        # tv dir
+        dirs = os.listdir(path)
+        dirs.sort()
+
+        for dir in dirs:
+            tvPath = os.path.join(path, dir)
+            if dirCheck(tvPath, ilList):
+                print(tvPath)
+                toLabelme(tvPath, yamlObject['names'])
+
+    else:
+        # dataset dir
+        dirs = os.listdir(path)
+        dirs.sort()
+
+        for dir in dirs:
+            dsPath = os.path.join(path, dir)
+            if dirCheck(dsPath, tvList):
+                dsDirs = os.listdir(dsPath)
+                dsDirs.sort()
+
+                for dsDir in dsDirs:
+                    tvPath = os.path.join(dsPath, dsDir)
+                    if dirCheck(tvPath, ilList):
+                        print(tvPath)
+                        toLabelme(tvPath, yamlObject['names'])
+    print("Done")
