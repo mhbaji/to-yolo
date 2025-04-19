@@ -33,8 +33,14 @@ def toTxt(path, labelsFilePath):
                     jsonObject = readJson(jsonPath)
                     for shape in jsonObject['shapes']:
                         if shape['shape_type'] == 'rectangle':
-                            xMin, yMin = shape['points'][0]
-                            xMax, yMax = shape['points'][1]
+                            xMin, yMin = None, None
+                            xMax, yMax = None, None
+                            for point in shape['points']:
+                                xPoint, yPoint = point
+                                if xMin is None or xMin > xPoint: xMin = xPoint
+                                if yMin is None or yMin > yPoint: yMin = yPoint
+                                if xMax is None or xMax < xPoint: xMax = xPoint
+                                if yMax is None or yMax < yPoint: yMax = yPoint
                             xMid = (xMin + xMax)/2
                             yMid = (yMin + yMax)/2
                             width = xMax - xMin 
