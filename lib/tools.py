@@ -20,7 +20,7 @@ def writeTxt(data:str, path:str):
 def readTxt(path:str):
     lines = []
     with open(path, 'r') as file:
-        lines = file.readlines()
+        lines = file.read().split("\n")
     return lines
 
 def dirCheck(path:str, listCheck:list):
