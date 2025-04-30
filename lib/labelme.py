@@ -32,6 +32,8 @@ def toTxt(path, labelsFilePath):
                     jsonPath = os.path.join(labelmePath, jsonName)
                     jsonObject = readJson(jsonPath)
                     for shape in jsonObject['shapes']:
+                        print(shape['label'], labels)
+                        labelIdx = labels.index(shape['label'])
                         if shape['shape_type'] == 'rectangle':
                             xMin, yMin = None, None
                             xMax, yMax = None, None
@@ -49,8 +51,16 @@ def toTxt(path, labelsFilePath):
                             yMidNorm = yMid/jsonObject['imageHeight']
                             widthNorm = width/jsonObject['imageWidth']
                             heightNorm = height/jsonObject['imageHeight']
-                            labelIdx = labels.index(shape['label'])
                             _data_format = f"{labelIdx} {xMidNorm} {yMidNorm} {widthNorm} {heightNorm}\n"
+                            txtStr += _data_format 
+
+                        elif shape['shape_type'] == 'polygon':
+                            _data_format = f"{labelIdx}"
+                            for point in shape['points']:
+                                xPoint, yPoint = point 
+                                xPointNorm, yPointNorm = xPoint/jsonObject['imageWidth'], yPoint/jsonObject['imageHeight']
+                                _data_format += f" {xPointNorm} {yPointNorm}"
+                            _data_format += "\n"
                             txtStr += _data_format
                     
                 writeTxt(txtStr, txtPath)
