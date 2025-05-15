@@ -32,7 +32,6 @@ def toTxt(path, labelsFilePath):
                     jsonPath = os.path.join(labelmePath, jsonName)
                     jsonObject = readJson(jsonPath)
                     for shape in jsonObject['shapes']:
-                        print(shape['label'], labels)
                         labelIdx = labels.index(shape['label'])
                         if shape['shape_type'] == 'rectangle':
                             xMin, yMin = None, None
@@ -104,7 +103,11 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool, dataNa
                     tvPath = os.path.join(path, dir)
                     if dirCheck(tvPath, ilList):
                         print(tvPath)
-                        data[dir], labels = toTxt(tvPath, labelsFilePath)
+                        _res_str, labels = toTxt(tvPath, labelsFilePath)
+                        if not dir in data:
+                            data[dir] = _res_str 
+                        else:
+                            data[dir] += _res_str
 
             else:
                 # dataset dir
@@ -121,7 +124,11 @@ def labelmeToYolo(path:str, labelsFilePath:str, ratio:str, isRemove:bool, dataNa
                             tvPath = os.path.join(dsPath, dsDir)
                             if dirCheck(tvPath, ilList):
                                 print(tvPath)
-                                data[dsDir], labels = toTxt(tvPath, labelsFilePath)
+                                _res_str, labels = toTxt(tvPath, labelsFilePath)
+                                if not dsDir in data:
+                                    data[dsDir] = _res_str 
+                                else:
+                                    data[dsDir] += _res_str
             print("Converted")
 
             print("Set Dir Generating")
