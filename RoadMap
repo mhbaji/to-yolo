@@ -1,7 +1,8 @@
 Feature Tools
-    - Labelme to Yolo Converter
+    - from and to Yolo Converter
     - Data Splitter
-    - Yolo to Labelme 
+    - Augmentation
+    - Data Selector
 
 Dataset Type
     - Detection
